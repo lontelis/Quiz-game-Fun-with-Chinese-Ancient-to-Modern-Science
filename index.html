@@ -80,10 +80,106 @@
     <script>
         // --- DATA ---
         const questions = [
-            { question: "During which dynasty were the rules for signed arithmetic recorded in the Nine Chapters on the Mathematical Art?", options: ["Qin dynasty", "Tang dynasty", "Han dynasty", "Ming dynasty"], answer: 2 },
-            { question: "Who achieved the 'dense ratio' of π ≈ 355/113?", options: ["Liu Hui", "Zu Chongzhi", "Su Song", "Confucius"], answer: 1 },
-            { question: "What was the primary function of the escapement mechanism in Su Song's astronomical clock?", options: ["To map the stars", "To regulate a waterwheel", "To predict eclipses", "To measure falling objects"], answer: 1 },
-            { question: "Which Greek philosopher is credited with the 'question-and-answer method of inquiry'?", options: ["Plato", "Aristotle", "Pythagoras", "Socrates"], answer: 3 }
+            { 
+                question: "What three regions make up the 'AGC Triality' shown on the title slide?", 
+                options: ["Asia, Germany, Canada", "America, Greece, China", "Africa, Greece, Colombia", "America, Germany, China"], 
+                answer: 1 
+            },
+            { 
+                question: "Who is the philosopher depicted and referred to as 'Master Kong' (孔子)?", 
+                options: ["Socrates", "Laozi", "Confucius", "Mozi"], 
+                answer: 2 
+            },
+            { 
+                question: "Which of the following is a core focus of the Chinese philosophy discussed?", 
+                options: ["Military strategy and conquest", "Personal and governmental morality", "The study of celestial mechanics", "The rejection of all social hierarchies"], 
+                answer: 1 
+            },
+            { 
+                question: "Which Greek philosopher is credited with the 'question-and-answer method of inquiry'?", 
+                options: ["Plato", "Aristotle", "Pythagoras", "Socrates"], 
+                answer: 3 
+            },
+            { 
+                question: "During which dynasty were the rules for signed arithmetic recorded in the Nine Chapters on the Mathematical Art?", 
+                options: ["Qin dynasty", "Tang dynasty", "Han dynasty", "Ming dynasty"], 
+                answer: 2 
+            },
+            { 
+                question: "Who achieved the 'dense ratio' of π ≈ 355/113?", 
+                options: ["Liu Hui", "Zu Chongzhi", "Su Song", "Confucius"], 
+                answer: 1 
+            },
+            { 
+                question: "What was the primary function of the escapement mechanism in Su Song's astronomical clock?", 
+                options: ["To map the positions of the stars", "To regulate a waterwheel for a constant, stepped rotation", "To predict solar eclipses", "To measure the speed of falling objects"], 
+                answer: 1 
+            },
+            { 
+                question: "In Su Song's memorial regarding his clock, what does the 'unresting' machine follow?", 
+                options: ["The unceasing heavens", "The flowing rivers", "The emperor's decrees", "The changing seasons"], 
+                answer: 0 
+            },
+            { 
+                question: "The slide compares Su Song's star maps to which modern scientific instrument?", 
+                options: ["James Webb Space Telescope", "Large Hadron Collider", "Dark Energy Spectroscopy Instrument (DESI)", "Hubble Space Telescope"], 
+                answer: 2 
+            },
+            { 
+                question: "Which scientist is pictured alongside the General Relativity equation?", 
+                options: ["Isaac Newton", "Niels Bohr", "Albert Einstein", "Stephen Hawking"], 
+                answer: 2 
+            },
+            { 
+                question: "Describe the General Relativity equation?", 
+                options: ["G + B = Ε T", "C = I A", "K = G Β", "G + Λ g = κ T"], 
+                answer: 3 
+            },
+            { 
+                question: "Which mathematical conjecture is associated with Wang Hong (2026 Fields Medal winner)?", 
+                options: ["The Riemann Hypothesis", "The Kakeya Conjecture", "Fermat's Last Theorem", "The Poincaré Conjecture"], 
+                answer: 1 
+            },
+            { 
+                question: "Deng Yu shared a Fields Medal for the rigorous derivation of which equation from hard-sphere dynamics?", 
+                options: ["The Navier-Stokes equation", "The Schrödinger equation", "The Boltzmann equation", "The Einstein field equations"], 
+                answer: 2 
+            },
+            { 
+                question: "What is the title of the presentation regarding Einstein's gravity?", 
+                options: ["Is Einstein's Gravity Unavoidable? A Test with the Cosmic Web", "The Fall of General Relativity", "Quantum Gravity in the 21st Century", "Mapping the Universe with DESI"], 
+                answer: 0 
+            },
+            { 
+                question: "According to Schiff's conjecture, if at least one principle (LPI, LLI, WEP) does not hold, what does this imply?", 
+                options: ["Newton's gravity is correct", "The EEP does not hold, implying new physics", "The speed of light is not constant", "The universe is static"], 
+                answer: 1 
+            },
+            { 
+                question: "What specific observable is used to conduct the 'cosmic test of Schiff's conjecture'?", 
+                options: ["The cosmic microwave background", "The dipole of the two-point correlation function", "Gravitational waves", "Black hole event horizons"], 
+                answer: 1 
+            },
+            { 
+                question: "What phrase is used on this transition slide, translated from the Chinese '永远 之后'?", 
+                options: ["A Long Time Ago", "One Eternity Later", "In the Beginning", "The End of Time"], 
+                answer: 1 
+            },
+            { 
+                question: "In the equation shown for the dipole, what do the LPI, WEP, and LLI boxes represent?", 
+                options: ["Types of galaxies", "Violation parameters", "Telescope names", "Fundamental constants"], 
+                answer: 1 
+            },
+            { 
+                question: "In Scenario A of the Fisher Forecast, what do the results (centered on 0) indicate?", 
+                options: ["LPI, LLI, and WEP hold, meaning EEP holds", "New physics has been discovered", "Einstein's gravity is completely wrong", "The universe is contracting"], 
+                answer: 0 
+            },
+            { 
+                question: "In Scenario B, what does a non-zero value for the parameter 'β' signify?", 
+                options: ["An LLI violation", "An LPI violation", "A WEP violation", "A cosmological expansion"], 
+                answer: 2 
+            }
         ];
 
         // --- NETWORK CONFIG (Public Broker) ---
