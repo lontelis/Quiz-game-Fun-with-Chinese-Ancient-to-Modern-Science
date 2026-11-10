@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multiplayer Quiz Game</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        :root {
+            --primary: #3498db; --danger: #e74c3c; --success: #2ecc71;
+            --warning: #f1c40f; --dark: #2c3e50; --light: #ecf0f1;
+        }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--dark); color: white; text-align: center; margin: 0; padding: 20px; overflow-x: hidden; }
+        
+        /* Screens */
+        .screen { display: none; max-width: 800px; margin: 0 auto; }
+        .active { display: block; }
+
+        /* Buttons */
+        button { padding: 15px 30px; font-size: 20px; cursor: pointer; border-radius: 8px; border: none; background: var(--primary); color: white; font-weight: bold; margin: 10px; transition: 0.2s; }
+        button:hover { opacity: 0.8; transform: scale(1.05); }
+        button:disabled { background: #7f8c8d; transform: none; cursor: not-allowed; }
+        .btn-success { background: var(--success); }
+        .btn-danger { background: var(--danger); }
+
+        /* Inputs */
+        input { padding: 12px; font-size: 16px; border-radius: 5px; border: 1px solid #ccc; width: 80%; max-width: 300px; margin: 5px; }
+
+        /* Host Screen */
+        #qr-container { background: white; padding: 15px; border-radius: 10px; display: inline-block; margin: 20px 0; }
+        .players-list { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 20px; }
+        .player-badge { background: #34495e; padding: 8px 16px; border-radius: 20px; font-size: 18px; }
+
+        /* Game Screen */
+        .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 20px 0; }
+        .option { background: var(--primary); padding: 20px; border-radius: 8px; font-size: 22px; cursor: pointer; transition: 0.2s; }
+        .option:hover { background: #2980b9; }
+        .option.correct { background: var(--success) !important; }
+        .option.wrong { background: var(--danger) !important; }
+        #chart-container { max-width: 500px; margin: 20px auto; }
+
+        /* Leaderboard */
+        .winner { font-size: 24px; margin: 15px 0; padding: 15px; border-radius: 10px; background: #34495e; }
+        .rank-1 { background: #f1c40f; color: #2c3e50; }
+        .rank-2 { background: #bdc3c7; color: #2c3e50; }
+        .rank-3 { background: #e67e22; color: #2c3e50; }
+    </style>
+</head>
+<body>
+
+    <!-- SCREEN 1: LOBBY -->
+    <div id="lobby-screen" class="screen active">
+        <h1>Quiz Game</h1>
+        <p>Add players to begin:</p>
+        <input type="text" id="player-name" placeholder="Enter player name">
+        <button onclick="addPlayer()">Add Player</button>
+        <div id="players-lobby" class="players-list"></div>
+        
+        <br><br>
+        <div id="qr-container"></div>
+        <p>Scan to join (Simulation)</p>
+        <button class="btn-success" onclick="startGame()">Start Game</button>
+    </div>
+
+    <!-- SCREEN 2: GAME -->
+    <div id="game-screen" class="screen">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h2 id="q-progress">Question 1/4</h2>
+            <h3 id="current-turn" style="color: var(--warning);">Turn: Player 1</h3>
+        </div>
+        
+        <h2 id="question-text" style="font-size: 28px; margin: 20px 0;"></h2>
+        
+        <div id="chart-container">
+            <canvas id="barChart"></canvas>
+        </div>
+
+        <div class="options-grid" id="options-container"></div>
+        
+        <button id="next-btn" class="btn-success" onclick="nextQuestion()" style="display: none;">Next Question</button>
+    </div>
+
+    <!-- SCREEN 3: LEADERBOARD -->
+    <div id="leaderboard-screen" class="screen">
+        <h1>Final Rankings</h1>
+        <div id="winners-container"></div>
+        <button onclick="location.reload()">Play Again</button>
+    </div>
+
+    <script>
+        // --- DATA ---
+        const questions = [
+            {
+                question: "During which dynasty were the rules for signed arithmetic recorded in the Nine Chapters on the Mathematical Art?",
+                options: ["Qin dynasty", "Tang dynasty", "Han dynasty", "Ming dynasty"],
+                answer: 2
+            },
+            {
+                question: "Who achieved the 'dense ratio' of π ≈ 355/113?",
+                options: ["Liu Hui", "Zu Chongzhi", "Su Song", "Confucius"],
+                answer: 1
+            },
+            {
+                question: "What was the primary function of the escapement mechanism in Su Song's astronomical clock?",
+                options: ["To map the stars", "To regulate a waterwheel", "To predict eclipses", "To measure falling objects"],
+                answer: 1
+            },
+            {
+                question: "Which Greek philosopher is credited with the 'question-and-answer method of inquiry'?",
+                options: ["Plato", "Aristotle", "Pythagoras", "Socrates"],
+                answer: 3
+            }
+        ];
+
+        // --- STATE ---
+        let players = [];
+        let currentQIndex = 0;
+        let currentPlayerIndex = 0;
+        let currentChart = null;
+        let answerCounts = [0, 0, 0, 0];
+        let isWaitingForNext = false;
+
+        // --- LOBBY LOGIC ---
+        // Generate fake QR code for visual effect
+        new QRCode(document.getElementById("qr-container"), {
+            text: "http://github.com/your-username/your-repo",
+            width: 128,
+            height: 128
+        });
+
+        function addPlayer() {
+            const nameInput = document.getElementById('player-name');
+            const name = nameInput.value.trim();
+            if (name && !players.find(p => p.name === name)) {
+                players.push({ name: name, score: 0 });
+                nameInput.value = '';
+                renderLobby();
+            }
+        }
+
+        function renderLobby() {
+            const container = document.getElementById('players-lobby');
+            container.innerHTML = players.map(p => `<div class="player-badge">${p.name}</div>`).join('');
+        }
+
+        // Allow pressing Enter to add player
+        document.getElementById('player-name').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') addPlayer();
+        });
+
+        // --- GAME LOGIC ---
+        function startGame() {
+            if (players.length === 0) {
+                alert("Add at least one player!");
+                return;
+            }
+            document.getElementById('lobby-screen').classList.remove('active');
+            document.getElementById('game-screen').classList.add('active');
+            currentQIndex = 0;
+            currentPlayerIndex = 0;
+            loadQuestion();
+        }
+
+        function loadQuestion() {
+            isWaitingForNext = false;
+            answerCounts = [0, 0, 0, 0];
+            document.getElementById('next-btn').style.display = 'none';
+
+            const q = questions[currentQIndex];
+            document.getElementById('q-progress').innerText = `Question ${currentQIndex + 1}/${questions.length}`;
+            document.getElementById('question-text').innerText = q.question;
+            
+            // Update Turn Indicator
+            document.getElementById('current-turn').innerText = `Turn: ${players[currentPlayerIndex].name}`;
+
+            // Render Options
+            const optContainer = document.getElementById('options-container');
+            optContainer.innerHTML = q.options.map((opt, i) => 
+                `<div class="option" onclick="submitAnswer(${i})" id="opt-${i}">${i+1}. ${opt}</div>`
+            ).join('');
+
+            // Setup Chart
+            if(currentChart) currentChart.destroy();
+            const ctx = document.getElementById('barChart').getContext('2d');
+            currentChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['1', '2', '3', '4'],
+                    datasets: [{ label: 'Votes', data: [0,0,0,0], backgroundColor: ['#e74c3c', '#3498db', '#f1c40f', '#2ecc71'] }]
+                },
+                options: { scales: { y: { beginAtZero: true, ticks: {stepSize: 1} } }, plugins: { legend: { display: false } } }
+            });
+        }
+
+        function submitAnswer(choice) {
+            if (isWaitingForNext) return;
+            isWaitingForNext = true;
+
+            const q = questions[currentQIndex];
+            const isCorrect = (choice === q.answer);
+
+            // Visual Feedback
+            document.getElementById(`opt-${choice}`).classList.add(isCorrect ? 'correct' : 'wrong');
+            if (!isCorrect) document.getElementById(`opt-${q.answer}`).classList.add('correct');
+
+            // Update Score & Chart
+            if (isCorrect) players[currentPlayerIndex].score += 1000;
+            answerCounts[choice] += 1;
+            
+            currentChart.data.datasets[0].data = answerCounts;
+            currentChart.update();
+
+            // Check whose turn is next
+            currentPlayerIndex++;
+            if (currentPlayerIndex >= players.length) {
+                // Everyone answered, show Next Question button
+                document.getElementById('next-btn').style.display = 'inline-block';
+                document.getElementById('next-btn').innerText = currentQIndex === questions.length - 1 ? "Show Leaderboard" : "Next Question";
+            } else {
+                // Next player's turn
+                setTimeout(() => {
+                    isWaitingForNext = false;
+                    document.getElementById('current-turn').innerText = `Turn: ${players[currentPlayerIndex].name}`;
+                    // Reset option colors for next player
+                    document.querySelectorAll('.option').forEach(el => el.classList.remove('correct', 'wrong'));
+                }, 1500); // Wait 1.5s so the player can see if they were right
+            }
+        }
+
+        function nextQuestion() {
+            currentQIndex++;
+            currentPlayerIndex = 0;
+
+            if (currentQIndex >= questions.length) {
+                showLeaderboard();
+            } else {
+                loadQuestion();
+            }
+        }
+
+        function showLeaderboard() {
+            document.getElementById('game-screen').classList.remove('active');
+            document.getElementById('leaderboard-screen').classList.add('active');
+
+            // Sort players by score
+            const sorted = [...players].sort((a, b) => b.score - a.score);
+            const container = document.getElementById('winners-container');
+            
+            let html = '';
+            sorted.slice(0, 3).forEach((player, index) => {
+                const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉';
+                const rankClass = `rank-${index + 1}`;
+                html += `<div class="winner ${rankClass}">${medal} ${player.name} - ${player.score} pts</div>`;
+            });
+            container.innerHTML = html;
+        }
+    </script>
+</body>
+</html>
