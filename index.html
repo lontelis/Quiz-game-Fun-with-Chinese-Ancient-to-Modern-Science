@@ -6,254 +6,286 @@
     <title>Multiplayer Quiz Game</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
     <style>
-        :root {
-            --primary: #3498db; --danger: #e74c3c; --success: #2ecc71;
-            --warning: #f1c40f; --dark: #2c3e50; --light: #ecf0f1;
-        }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--dark); color: white; text-align: center; margin: 0; padding: 20px; overflow-x: hidden; }
-        
-        /* Screens */
+        :root { --primary: #3498db; --danger: #e74c3c; --success: #2ecc71; --warning: #f1c40f; --dark: #2c3e50; --light: #ecf0f1; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--dark); color: white; text-align: center; margin: 0; padding: 20px; }
         .screen { display: none; max-width: 800px; margin: 0 auto; }
         .active { display: block; }
-
-        /* Buttons */
-        button { padding: 15px 30px; font-size: 20px; cursor: pointer; border-radius: 8px; border: none; background: var(--primary); color: white; font-weight: bold; margin: 10px; transition: 0.2s; }
-        button:hover { opacity: 0.8; transform: scale(1.05); }
-        button:disabled { background: #7f8c8d; transform: none; cursor: not-allowed; }
+        button { padding: 15px 30px; font-size: 18px; cursor: pointer; border-radius: 8px; border: none; background: var(--primary); color: white; font-weight: bold; margin: 10px; }
+        button:disabled { background: #7f8c8d; }
         .btn-success { background: var(--success); }
-        .btn-danger { background: var(--danger); }
-
-        /* Inputs */
-        input { padding: 12px; font-size: 16px; border-radius: 5px; border: 1px solid #ccc; width: 80%; max-width: 300px; margin: 5px; }
-
-        /* Host Screen */
+        input { padding: 12px; font-size: 16px; border-radius: 5px; border: 1px solid #ccc; width: 80%; max-width: 300px; margin: 10px 0; text-align: center; }
         #qr-container { background: white; padding: 15px; border-radius: 10px; display: inline-block; margin: 20px 0; }
-        .players-list { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 20px; }
-        .player-badge { background: #34495e; padding: 8px 16px; border-radius: 20px; font-size: 18px; }
-
-        /* Game Screen */
+        .players-list { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 15px; }
+        .player-badge { background: #34495e; padding: 8px 16px; border-radius: 20px; font-size: 16px; }
         .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 20px 0; }
-        .option { background: var(--primary); padding: 20px; border-radius: 8px; font-size: 22px; cursor: pointer; transition: 0.2s; }
-        .option:hover { background: #2980b9; }
+        .option { background: var(--primary); padding: 20px; border-radius: 8px; font-size: 20px; }
         .option.correct { background: var(--success) !important; }
         .option.wrong { background: var(--danger) !important; }
-        #chart-container { max-width: 500px; margin: 20px auto; }
-
-        /* Leaderboard */
-        .winner { font-size: 24px; margin: 15px 0; padding: 15px; border-radius: 10px; background: #34495e; }
-        .rank-1 { background: #f1c40f; color: #2c3e50; }
-        .rank-2 { background: #bdc3c7; color: #2c3e50; }
-        .rank-3 { background: #e67e22; color: #2c3e50; }
+        .winner { font-size: 20px; margin: 10px 0; padding: 15px; border-radius: 10px; color: #2c3e50; }
+        .rank-1 { background: #f1c40f; } .rank-2 { background: #bdc3c7; } .rank-3 { background: #e67e22; }
+        .option-btn { width: 100%; display: block; margin: 10px 0; background: var(--primary); font-size: 20px; padding: 20px; }
     </style>
 </head>
 <body>
 
-    <!-- SCREEN 1: LOBBY -->
-    <div id="lobby-screen" class="screen active">
-        <h1>Quiz Game</h1>
-        <p>Add players to begin:</p>
-        <input type="text" id="player-name" placeholder="Enter player name">
-        <button onclick="addPlayer()">Add Player</button>
-        <div id="players-lobby" class="players-list"></div>
-        
-        <br><br>
-        <div id="qr-container"></div>
-        <p>Scan to join (Simulation)</p>
-        <button class="btn-success" onclick="startGame()">Start Game</button>
-    </div>
-
-    <!-- SCREEN 2: GAME -->
-    <div id="game-screen" class="screen">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <h2 id="q-progress">Question 1/4</h2>
-            <h3 id="current-turn" style="color: var(--warning);">Turn: Player 1</h3>
+    <!-- HOST UI (Laptop) -->
+    <div id="host-ui" class="screen">
+        <div id="host-lobby">
+            <h1>Quiz Game</h1>
+            <h2 style="color: var(--warning);">Room Code: <span id="room-code-display">...</span></h2>
+            <div id="qr-container"></div>
+            <p>Scan the QR code to join!</p>
+            <div id="players-lobby" class="players-list"></div>
+            <br><button class="btn-success" onclick="startGame()">Start Game</button>
         </div>
         
-        <h2 id="question-text" style="font-size: 28px; margin: 20px 0;"></h2>
-        
-        <div id="chart-container">
-            <canvas id="barChart"></canvas>
+        <div id="host-game" style="display: none;">
+            <h2 id="q-progress"></h2>
+            <h2 id="question-text" style="font-size: 28px;"></h2>
+            <canvas id="barChart" style="background:white; border-radius:10px; margin-bottom:20px;"></canvas>
+            <div class="options-grid" id="options-container"></div>
+            <button id="next-btn" onclick="showResults()">Show Correct Answer</button>
+            <button id="next-q-btn" style="display:none; background: var(--success);" onclick="nextQ()">Next Question</button>
         </div>
 
-        <div class="options-grid" id="options-container"></div>
-        
-        <button id="next-btn" class="btn-success" onclick="nextQuestion()" style="display: none;">Next Question</button>
+        <div id="host-leaderboard" style="display: none;">
+            <h1>Final Leaderboard</h1>
+            <div id="winners-container"></div>
+            <button onclick="location.reload()">Play Again</button>
+        </div>
     </div>
 
-    <!-- SCREEN 3: LEADERBOARD -->
-    <div id="leaderboard-screen" class="screen">
-        <h1>Final Rankings</h1>
-        <div id="winners-container"></div>
-        <button onclick="location.reload()">Play Again</button>
+    <!-- PLAYER UI (Phone) -->
+    <div id="player-ui" class="screen">
+        <div id="player-login">
+            <h2>Join Quiz</h2>
+            <p>Room Code:</p>
+            <input type="text" id="room-input" placeholder="Enter Room Code">
+            <br>
+            <p>Your Name:</p>
+            <input type="text" id="name-input" placeholder="Enter Name">
+            <br><button class="btn-success" onclick="joinGame()">Join Game</button>
+            <p id="login-error" style="color:red;"></p>
+        </div>
+
+        <div id="player-game" style="display: none;">
+            <h3 id="waiting-msg">Waiting for host...</h3>
+            <h3 id="p-q-text" style="display: none;"></h3>
+            <div id="p-options"></div>
+        </div>
     </div>
 
     <script>
         // --- DATA ---
         const questions = [
-            {
-                question: "During which dynasty were the rules for signed arithmetic recorded in the Nine Chapters on the Mathematical Art?",
-                options: ["Qin dynasty", "Tang dynasty", "Han dynasty", "Ming dynasty"],
-                answer: 2
-            },
-            {
-                question: "Who achieved the 'dense ratio' of π ≈ 355/113?",
-                options: ["Liu Hui", "Zu Chongzhi", "Su Song", "Confucius"],
-                answer: 1
-            },
-            {
-                question: "What was the primary function of the escapement mechanism in Su Song's astronomical clock?",
-                options: ["To map the stars", "To regulate a waterwheel", "To predict eclipses", "To measure falling objects"],
-                answer: 1
-            },
-            {
-                question: "Which Greek philosopher is credited with the 'question-and-answer method of inquiry'?",
-                options: ["Plato", "Aristotle", "Pythagoras", "Socrates"],
-                answer: 3
-            }
+            { question: "During which dynasty were the rules for signed arithmetic recorded in the Nine Chapters on the Mathematical Art?", options: ["Qin dynasty", "Tang dynasty", "Han dynasty", "Ming dynasty"], answer: 2 },
+            { question: "Who achieved the 'dense ratio' of π ≈ 355/113?", options: ["Liu Hui", "Zu Chongzhi", "Su Song", "Confucius"], answer: 1 },
+            { question: "What was the primary function of the escapement mechanism in Su Song's astronomical clock?", options: ["To map the stars", "To regulate a waterwheel", "To predict eclipses", "To measure falling objects"], answer: 1 },
+            { question: "Which Greek philosopher is credited with the 'question-and-answer method of inquiry'?", options: ["Plato", "Aristotle", "Pythagoras", "Socrates"], answer: 3 }
         ];
 
-        // --- STATE ---
-        let players = [];
+        // --- NETWORK CONFIG (Public Broker) ---
+        const brokerUrl = "wss://broker.emqx.io:8084/mqtt"; // Free public MQTT broker
+        let client = null;
+        let currentRoom = "";
+        let myName = "";
+        
+        // Game State (Host only)
+        let players = {}; 
         let currentQIndex = 0;
-        let currentPlayerIndex = 0;
         let currentChart = null;
-        let answerCounts = [0, 0, 0, 0];
-        let isWaitingForNext = false;
+        let votes = [0,0,0,0];
+        let hostQuestions = questions;
 
-        // --- LOBBY LOGIC ---
-        // Generate fake QR code for visual effect
-        new QRCode(document.getElementById("qr-container"), {
-            text: "https://lontelis.github.io/Quiz-game-Fun-with-Chinese-Ancient-to-Modern-Science/",
-            width: 128,
-            height: 128
-        });
+        // --- ROUTING (Host vs Player) ---
+        const urlParams = new URLSearchParams(window.location.search);
+        const isPlayer = urlParams.get('play') === 'true';
+        const roomParam = urlParams.get('room');
 
-        function addPlayer() {
-            const nameInput = document.getElementById('player-name');
-            const name = nameInput.value.trim();
-            if (name && !players.find(p => p.name === name)) {
-                players.push({ name: name, score: 0 });
-                nameInput.value = '';
-                renderLobby();
-            }
+        if (isPlayer) {
+            document.getElementById('host-ui').style.display = 'none';
+            document.getElementById('player-ui').style.display = 'block';
+            if(roomParam) document.getElementById('room-input').value = roomParam;
+        } else {
+            document.getElementById('host-ui').style.display = 'block';
+            document.getElementById('player-ui').style.display = 'none';
+            initHost();
+        }
+
+        // ==========================================
+        // HOST LOGIC
+        // ==========================================
+        function initHost() {
+            // Generate random 4 digit room code
+            currentRoom = "QUIZ-" + Math.floor(1000 + Math.random() * 9000);
+            document.getElementById('room-code-display').innerText = currentRoom;
+
+            // Generate QR
+            const playerUrl = window.location.origin + window.location.pathname + "?play=true&room=" + currentRoom;
+            new QRCode(document.getElementById("qr-container"), { text: playerUrl, width: 150, height: 150 });
+
+            // Connect to MQTT
+            client = mqtt.connect(brokerUrl);
+            
+            client.on('connect', () => {
+                client.subscribe(currentRoom + "/answers");
+                client.subscribe(currentRoom + "/join");
+            });
+
+            client.on('message', (topic, message) => {
+                const data = JSON.parse(message.toString());
+                
+                if (topic === currentRoom + "/join") {
+                    if (!players[data.name]) {
+                        players[data.name] = 0; // Add to lobby
+                        renderLobby();
+                    }
+                }
+                
+                if (topic === currentRoom + "/answers" && document.getElementById('host-game').style.display === 'block') {
+                    if (!players.hasOwnProperty(data.name)) return; // Ignore if not in game
+                    
+                    if (data.choice !== -1) {
+                        votes[data.choice]++;
+                        if(currentChart) {
+                            currentChart.data.datasets[0].data = votes;
+                            currentChart.update();
+                        }
+                        if (data.choice === hostQuestions[currentQIndex].answer) {
+                            players[data.name] += 1000;
+                        }
+                    }
+                }
+            });
         }
 
         function renderLobby() {
             const container = document.getElementById('players-lobby');
-            container.innerHTML = players.map(p => `<div class="player-badge">${p.name}</div>`).join('');
+            container.innerHTML = Object.keys(players).map(name => `<div class="player-badge">${name}</div>`).join('');
         }
 
-        // Allow pressing Enter to add player
-        document.getElementById('player-name').addEventListener('keypress', function (e) {
-            if (e.key === 'Enter') addPlayer();
-        });
-
-        // --- GAME LOGIC ---
         function startGame() {
-            if (players.length === 0) {
-                alert("Add at least one player!");
-                return;
-            }
-            document.getElementById('lobby-screen').classList.remove('active');
-            document.getElementById('game-screen').classList.add('active');
+            if (Object.keys(players).length === 0) { alert("Wait for players to join!"); return; }
+            document.getElementById('host-lobby').style.display = 'none';
+            document.getElementById('host-game').style.display = 'block';
             currentQIndex = 0;
-            currentPlayerIndex = 0;
-            loadQuestion();
+            loadHostQuestion();
         }
 
-        function loadQuestion() {
-            isWaitingForNext = false;
-            answerCounts = [0, 0, 0, 0];
-            document.getElementById('next-btn').style.display = 'none';
-
-            const q = questions[currentQIndex];
-            document.getElementById('q-progress').innerText = `Question ${currentQIndex + 1}/${questions.length}`;
+        function loadHostQuestion() {
+            votes = [0,0,0,0];
+            const q = hostQuestions[currentQIndex];
+            document.getElementById('q-progress').innerText = `Question ${currentQIndex + 1}/${hostQuestions.length}`;
             document.getElementById('question-text').innerText = q.question;
             
-            // Update Turn Indicator
-            document.getElementById('current-turn').innerText = `Turn: ${players[currentPlayerIndex].name}`;
-
-            // Render Options
-            const optContainer = document.getElementById('options-container');
-            optContainer.innerHTML = q.options.map((opt, i) => 
-                `<div class="option" onclick="submitAnswer(${i})" id="opt-${i}">${i+1}. ${opt}</div>`
+            document.getElementById('options-container').innerHTML = q.options.map((opt, i) => 
+                `<div class="option" id="opt-${i}">${i+1}. ${opt}</div>`
             ).join('');
 
-            // Setup Chart
+            document.getElementById('next-btn').style.display = 'inline-block';
+            document.getElementById('next-q-btn').style.display = 'none';
+
             if(currentChart) currentChart.destroy();
             const ctx = document.getElementById('barChart').getContext('2d');
             currentChart = new Chart(ctx, {
                 type: 'bar',
-                data: {
-                    labels: ['1', '2', '3', '4'],
-                    datasets: [{ label: 'Votes', data: [0,0,0,0], backgroundColor: ['#e74c3c', '#3498db', '#f1c40f', '#2ecc71'] }]
-                },
+                data: { labels: ['1', '2', '3', '4'], datasets: [{ data: [0,0,0,0], backgroundColor: ['#e74c3c', '#3498db', '#f1c40f', '#2ecc71'] }] },
                 options: { scales: { y: { beginAtZero: true, ticks: {stepSize: 1} } }, plugins: { legend: { display: false } } }
             });
+
+            // Broadcast question to all players
+            client.publish(currentRoom + "/questions", JSON.stringify({
+                qIndex: currentQIndex,
+                question: q.question,
+                options: q.options
+            }));
         }
 
-        function submitAnswer(choice) {
-            if (isWaitingForNext) return;
-            isWaitingForNext = true;
-
-            const q = questions[currentQIndex];
-            const isCorrect = (choice === q.answer);
-
-            // Visual Feedback
-            document.getElementById(`opt-${choice}`).classList.add(isCorrect ? 'correct' : 'wrong');
-            if (!isCorrect) document.getElementById(`opt-${q.answer}`).classList.add('correct');
-
-            // Update Score & Chart
-            if (isCorrect) players[currentPlayerIndex].score += 1000;
-            answerCounts[choice] += 1;
-            
-            currentChart.data.datasets[0].data = answerCounts;
-            currentChart.update();
-
-            // Check whose turn is next
-            currentPlayerIndex++;
-            if (currentPlayerIndex >= players.length) {
-                // Everyone answered, show Next Question button
-                document.getElementById('next-btn').style.display = 'inline-block';
-                document.getElementById('next-btn').innerText = currentQIndex === questions.length - 1 ? "Show Leaderboard" : "Next Question";
-            } else {
-                // Next player's turn
-                setTimeout(() => {
-                    isWaitingForNext = false;
-                    document.getElementById('current-turn').innerText = `Turn: ${players[currentPlayerIndex].name}`;
-                    // Reset option colors for next player
-                    document.querySelectorAll('.option').forEach(el => el.classList.remove('correct', 'wrong'));
-                }, 1500); // Wait 1.5s so the player can see if they were right
-            }
+        function showResults() {
+            const q = hostQuestions[currentQIndex];
+            document.getElementById(`opt-${q.answer}`).classList.add('correct');
+            document.getElementById('next-btn').style.display = 'none';
+            document.getElementById('next-q-btn').style.display = 'inline-block';
         }
 
-        function nextQuestion() {
+        function nextQ() {
             currentQIndex++;
-            currentPlayerIndex = 0;
-
-            if (currentQIndex >= questions.length) {
-                showLeaderboard();
+            if (currentQIndex >= hostQuestions.length) {
+                document.getElementById('host-game').style.display = 'none';
+                document.getElementById('host-leaderboard').style.display = 'block';
+                const sorted = Object.entries(players).sort((a, b) => b[1] - a[1]);
+                document.getElementById('winners-container').innerHTML = sorted.slice(0, 3).map((p, i) => 
+                    `<div class="winner rank-${i+1}">${i===0?'🥇':i===1?'🥈':'🥉'} ${p[0]} - ${p[1]} pts</div>`
+                ).join('');
+                client.publish(currentRoom + "/questions", JSON.stringify({ gameOver: true }));
             } else {
-                loadQuestion();
+                loadHostQuestion();
             }
         }
 
-        function showLeaderboard() {
-            document.getElementById('game-screen').classList.remove('active');
-            document.getElementById('leaderboard-screen').classList.add('active');
-
-            // Sort players by score
-            const sorted = [...players].sort((a, b) => b.score - a.score);
-            const container = document.getElementById('winners-container');
+        // ==========================================
+        // PLAYER LOGIC
+        // ==========================================
+        function joinGame() {
+            currentRoom = document.getElementById('room-input').value.trim().toUpperCase();
+            myName = document.getElementById('name-input').value.trim();
             
-            let html = '';
-            sorted.slice(0, 3).forEach((player, index) => {
-                const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉';
-                const rankClass = `rank-${index + 1}`;
-                html += `<div class="winner ${rankClass}">${medal} ${player.name} - ${player.score} pts</div>`;
+            if (!currentRoom || !myName) {
+                document.getElementById('login-error').innerText = "Please enter both Room Code and Name.";
+                return;
+            }
+
+            // Connect to MQTT
+            client = mqtt.connect(brokerUrl);
+            
+            client.on('connect', () => {
+                client.subscribe(currentRoom + "/questions");
+                client.publish(currentRoom + "/join", JSON.stringify({ name: myName }));
+                
+                document.getElementById('player-login').style.display = 'none';
+                document.getElementById('player-game').style.display = 'block';
             });
-            container.innerHTML = html;
+
+            client.on('message', (topic, message) => {
+                const data = JSON.parse(message.toString());
+                
+                if (data.gameOver) {
+                    document.getElementById('waiting-msg').style.display = 'block';
+                    document.getElementById('waiting-msg').innerText = "Game Over! Look at the host screen.";
+                    document.getElementById('p-q-text').style.display = 'none';
+                    document.getElementById('p-options').style.display = 'none';
+                    return;
+                }
+
+                // Show new question
+                document.getElementById('waiting-msg').style.display = 'none';
+                document.getElementById('p-q-text').style.display = 'block';
+                document.getElementById('p-q-text').innerText = data.question;
+                
+                const optDiv = document.getElementById('p-options');
+                optDiv.style.display = 'block';
+                optDiv.innerHTML = data.options.map((opt, i) => 
+                    `<button class="option-btn" onclick="submitAnswer(${i})">${opt}</button>`
+                ).join('');
+            });
+        }
+
+        let hasAnswered = false;
+        function submitAnswer(choice) {
+            if (hasAnswered) return;
+            hasAnswered = true;
+            
+            document.querySelectorAll('.option-btn').forEach(btn => btn.disabled = true);
+            document.getElementById('p-q-text').innerText = "Answer submitted! Waiting for others...";
+            document.getElementById('p-options').style.display = 'none';
+
+            // Send answer to Host
+            client.publish(currentRoom + "/answers", JSON.stringify({ name: myName, choice: choice }));
+
+            // Reset for next question
+            setTimeout(() => { hasAnswered = false; }, 1000);
         }
     </script>
 </body>
