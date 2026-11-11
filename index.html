@@ -19,13 +19,20 @@
         #qr-container { background: white; padding: 15px; border-radius: 10px; display: inline-block; margin: 20px 0; }
         .players-list { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 15px; }
         .player-badge { background: #34495e; padding: 8px 16px; border-radius: 20px; font-size: 16px; }
+        
+        /* Game Layout */
         .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 20px 0; }
         .option { background: var(--primary); padding: 20px; border-radius: 8px; font-size: 20px; }
         .option.correct { background: var(--success) !important; }
         .option.wrong { background: var(--danger) !important; }
+        
+        /* Images */
+        #question-image { max-width: 100%; max-height: 300px; object-fit: contain; border-radius: 10px; margin: 10px auto; display: none; border: 3px solid var(--primary); }
+        #p-question-image { max-width: 100%; max-height: 200px; object-fit: contain; border-radius: 10px; margin: 10px auto; display: none; }
+
         .winner { font-size: 20px; margin: 10px 0; padding: 15px; border-radius: 10px; color: #2c3e50; }
         .rank-1 { background: #f1c40f; } .rank-2 { background: #bdc3c7; } .rank-3 { background: #e67e22; }
-        .option-btn { width: 100%; display: block; margin: 10px 0; background: var(--primary); font-size: 20px; padding: 20px; }
+        .option-btn { width: 100%; display: block; margin: 10px 0; background: var(--primary); font-size: 18px; padding: 15px; }
     </style>
 </head>
 <body>
@@ -43,8 +50,12 @@
         
         <div id="host-game" style="display: none;">
             <h2 id="q-progress"></h2>
-            <h2 id="question-text" style="font-size: 28px;"></h2>
-            <canvas id="barChart" style="background:white; border-radius:10px; margin-bottom:20px;"></canvas>
+            
+            <!-- HOST IMAGE CONTAINER -->
+            <img id="question-image" src="" alt="Question Image">
+            
+            <h2 id="question-text" style="font-size: 26px;"></h2>
+            <canvas id="barChart" style="background:white; border-radius:10px; margin-bottom:20px; max-height: 250px;"></canvas>
             <div class="options-grid" id="options-container"></div>
             <button id="next-btn" onclick="showResults()">Show Correct Answer</button>
             <button id="next-q-btn" style="display:none; background: var(--success);" onclick="nextQ()">Next Question</button>
@@ -72,6 +83,10 @@
 
         <div id="player-game" style="display: none;">
             <h3 id="waiting-msg">Waiting for host...</h3>
+            
+            <!-- PLAYER IMAGE CONTAINER -->
+            <img id="p-question-image" src="" alt="Question Image">
+            
             <h3 id="p-q-text" style="display: none;"></h3>
             <div id="p-options"></div>
         </div>
@@ -79,116 +94,140 @@
 
     <script>
         // --- DATA ---
+        // Note: Replace the placeholder image URLs with paths to your actual images.
+        // Example: image: "images/slide1.png"
         const questions = [
             { 
                 question: "What is the chinese etymology of philosophy (哲學)?", 
                 options: ["friend of Sophie", "love wisdom", "friend of study", "wisdom study"], 
-                answer: 4 
+                answer: 1,
+                image: "https://via.placeholder.com/600x300/3498db/ffffff?text=Image+for+Chinese+Etymology"
             },      
             { 
                 question: "What is the greek etymology of philosophy?", 
                 options: ["friend of Sophie", "love wisdom", "friend of study", "wisdom study"],  
-                answer: 2 
+                answer: 1,
+                image: "https://via.placeholder.com/600x300/3498db/ffffff?text=Image+for+Greek+Etymology"
             },                     
             { 
                 question: "What three regions make up the 'AGC Triality' shown on the title slide?", 
                 options: ["Asia, Germany, Canada", "America, Greece, China", "Africa, Greece, Colombia", "America, Germany, China"], 
-                answer: 1 
+                answer: 1,
+                image: "https://via.placeholder.com/600x300/3498db/ffffff?text=AGC+Triality+Map"
             },
             { 
                 question: "Who is the philosopher depicted and referred to as 'Master Kong' (孔子)?", 
                 options: ["Socrates", "Laozi", "Confucius", "Mozi"], 
-                answer: 2 
+                answer: 2,
+                image: "https://via.placeholder.com/600x300/3498db/ffffff?text=Confucius+Portrait"
             },
             { 
                 question: "Which of the following is a core focus of the Chinese philosophy discussed?", 
                 options: ["Military strategy and conquest", "Personal and governmental morality", "The study of celestial mechanics", "The rejection of all social hierarchies"], 
-                answer: 1 
+                answer: 1,
+                image: "https://via.placeholder.com/600x300/3498db/ffffff?text=Chinese+Philosophy+Text"
             },         
             { 
                 question: "Which Greek philosopher is credited with the 'question-and-answer method of inquiry'?", 
                 options: ["Plato", "Aristotle", "Pythagoras", "Socrates"], 
-                answer: 3 
+                answer: 3,
+                image: "https://via.placeholder.com/600x300/3498db/ffffff?text=Socrates+Statue"
             },      
             { 
                 question: "During which dynasty were the rules for signed arithmetic recorded in the Nine Chapters on the Mathematical Art?", 
                 options: ["Qin dynasty", "Tang dynasty", "Han dynasty", "Ming dynasty"], 
-                answer: 2 
+                answer: 2,
+                image: "https://via.placeholder.com/600x300/3498db/ffffff?text=Nine+Chapters+Text"
             },
             { 
                 question: "Who achieved the 'dense ratio' of π ≈ 355/113?", 
                 options: ["Liu Hui", "Zu Chongzhi", "Su Song", "Confucius"], 
-                answer: 1 
+                answer: 1,
+                image: "https://via.placeholder.com/600x300/3498db/ffffff?text=Pi+Cyclotomy+Diagram"
             },
             { 
                 question: "What was the primary function of the escapement mechanism in Su Song's astronomical clock?", 
                 options: ["To map the positions of the stars", "To regulate a waterwheel for a constant, stepped rotation", "To predict solar eclipses", "To measure the speed of falling objects"], 
-                answer: 1 
+                answer: 1,
+                image: "https://via.placeholder.com/600x300/3498db/ffffff?text=Su+Song+Clock+Tower"
             },
             { 
                 question: "In Su Song's memorial regarding his clock, what does the 'unresting' machine follow?", 
                 options: ["The unceasing heavens", "The flowing rivers", "The emperor's decrees", "The changing seasons"], 
-                answer: 0 
+                answer: 0,
+                image: "https://via.placeholder.com/600x300/3498db/ffffff?text=Su+Song+Star+Map"
             },
             { 
                 question: "The slide compares Su Song's star maps to which modern scientific instrument?", 
                 options: ["James Webb Space Telescope", "Large Hadron Collider", "Dark Energy Spectroscopy Instrument (DESI)", "Hubble Space Telescope"], 
-                answer: 2 
+                answer: 2,
+                image: "https://via.placeholder.com/600x300/3498db/ffffff?text=DESI+Instrument"
             },
             { 
                 question: "Which scientist is pictured alongside the General Relativity equation?", 
                 options: ["Isaac Newton", "Niels Bohr", "Albert Einstein", "Stephen Hawking"], 
-                answer: 2 
+                answer: 2,
+                image: "https://via.placeholder.com/600x300/3498db/ffffff?text=Einstein+Photo"
             },
             { 
                 question: "Describe the General Relativity equation?", 
                 options: ["G + B = Ε T", "C = I A", "K = G Β", "G + Λ g = κ T"], 
-                answer: 3 
+                answer: 3,
+                image: "https://via.placeholder.com/600x300/3498db/ffffff?text=General+Relativity+Equation"
             },
             { 
                 question: "Which mathematical conjecture is associated with Wang Hong (2026 Fields Medal winner)?", 
                 options: ["The Riemann Hypothesis", "The Kakeya Conjecture", "Fermat's Last Theorem", "The Poincaré Conjecture"], 
-                answer: 1 
+                answer: 1,
+                image: "https://via.placeholder.com/600x300/3498db/ffffff?text=Kakeya+Conjecture+Chalkboard"
             },
             { 
                 question: "Deng Yu shared a Fields Medal for the rigorous derivation of which equation from hard-sphere dynamics?", 
                 options: ["The Navier-Stokes equation", "The Schrödinger equation", "The Boltzmann equation", "The Einstein field equations"], 
-                answer: 2 
+                answer: 2,
+                image: "https://via.placeholder.com/600x300/3498db/ffffff?text=Boltzmann+Hard+Spheres"
             },
             { 
                 question: "What is the title of the presentation regarding Einstein's gravity?", 
                 options: ["Is Einstein's Gravity Unavoidable? A Test with the Cosmic Web", "The Fall of General Relativity", "Quantum Gravity in the 21st Century", "Mapping the Universe with DESI"], 
-                answer: 0 
+                answer: 0,
+                image: "https://via.placeholder.com/600x300/3498db/ffffff?text=Cosmic+Web+Title+Slide"
             },
             { 
                 question: "According to Schiff's conjecture, if at least one principle (LPI, LLI, WEP) does not hold, what does this imply?", 
                 options: ["Newton's gravity is correct", "The EEP does not hold, implying new physics", "The speed of light is not constant", "The universe is static"], 
-                answer: 1 
+                answer: 1,
+                image: "https://via.placeholder.com/600x300/3498db/ffffff?text=Schiff's+Conjecture+Diagram"
             },
             { 
                 question: "What specific observable is used to conduct the 'cosmic test of Schiff's conjecture'?", 
                 options: ["The cosmic microwave background", "The dipole of the two-point correlation function", "Gravitational waves", "Black hole event horizons"], 
-                answer: 1 
+                answer: 1,
+                image: "https://via.placeholder.com/600x300/3498db/ffffff?text=Dipole+Equation+Slide"
             },
             { 
                 question: "What phrase is used on this transition slide, translated from the Chinese '永远 之后'?", 
                 options: ["A Long Time Ago", "One Eternity Later", "In the Beginning", "The End of Time"], 
-                answer: 1 
+                answer: 1,
+                image: "https://via.placeholder.com/600x300/3498db/ffffff?text=One+Eternity+Later+Slide"
             },
             { 
                 question: "In the equation shown for the dipole, what do the LPI, WEP, and LLI boxes represent?", 
                 options: ["Types of galaxies", "Violation parameters", "Telescope names", "Fundamental constants"], 
-                answer: 1 
+                answer: 1,
+                image: "https://via.placeholder.com/600x300/3498db/ffffff?text=Violation+Parameters+Chart"
             },
             { 
                 question: "In Scenario A of the Fisher Forecast, what do the results (centered on 0) indicate?", 
                 options: ["LPI, LLI, and WEP hold, meaning EEP holds", "New physics has been discovered", "Einstein's gravity is completely wrong", "The universe is contracting"], 
-                answer: 0 
+                answer: 0,
+                image: "https://via.placeholder.com/600x300/3498db/ffffff?text=Fisher+Forecast+Scenario+A"
             },
             { 
                 question: "In Scenario B, what does a non-zero value for the parameter 'β' signify?", 
                 options: ["An LLI violation", "An LPI violation", "A WEP violation", "A cosmological expansion"], 
-                answer: 2 
+                answer: 2,
+                image: "https://via.placeholder.com/600x300/3498db/ffffff?text=Fisher+Forecast+Scenario+B"
             }
         ];
 
@@ -286,6 +325,15 @@
             document.getElementById('q-progress').innerText = `Question ${currentQIndex + 1}/${hostQuestions.length}`;
             document.getElementById('question-text').innerText = q.question;
             
+            // LOAD HOST IMAGE
+            const imgElement = document.getElementById('question-image');
+            if (q.image) {
+                imgElement.src = q.image;
+                imgElement.style.display = 'block';
+            } else {
+                imgElement.style.display = 'none';
+            }
+
             document.getElementById('options-container').innerHTML = q.options.map((opt, i) => 
                 `<div class="option" id="opt-${i}">${i+1}. ${opt}</div>`
             ).join('');
@@ -301,11 +349,12 @@
                 options: { scales: { y: { beginAtZero: true, ticks: {stepSize: 1} } }, plugins: { legend: { display: false } } }
             });
 
-            // Broadcast question to all players
+            // Broadcast question to all players (including image)
             client.publish(currentRoom + "/questions", JSON.stringify({
                 qIndex: currentQIndex,
                 question: q.question,
-                options: q.options
+                options: q.options,
+                image: q.image
             }));
         }
 
@@ -362,6 +411,7 @@
                     document.getElementById('waiting-msg').innerText = "Game Over! Look at the host screen.";
                     document.getElementById('p-q-text').style.display = 'none';
                     document.getElementById('p-options').style.display = 'none';
+                    document.getElementById('p-question-image').style.display = 'none';
                     return;
                 }
 
@@ -369,6 +419,15 @@
                 document.getElementById('waiting-msg').style.display = 'none';
                 document.getElementById('p-q-text').style.display = 'block';
                 document.getElementById('p-q-text').innerText = data.question;
+                
+                // LOAD PLAYER IMAGE
+                const pImg = document.getElementById('p-question-image');
+                if (data.image) {
+                    pImg.src = data.image;
+                    pImg.style.display = 'block';
+                } else {
+                    pImg.style.display = 'none';
+                }
                 
                 const optDiv = document.getElementById('p-options');
                 optDiv.style.display = 'block';
@@ -386,6 +445,7 @@
             document.querySelectorAll('.option-btn').forEach(btn => btn.disabled = true);
             document.getElementById('p-q-text').innerText = "Answer submitted! Waiting for others...";
             document.getElementById('p-options').style.display = 'none';
+            document.getElementById('p-question-image').style.display = 'none'; // Hide image on phone after answering
 
             // Send answer to Host
             client.publish(currentRoom + "/answers", JSON.stringify({ name: myName, choice: choice }));
